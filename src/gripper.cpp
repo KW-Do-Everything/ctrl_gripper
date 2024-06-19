@@ -5,6 +5,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <vector>
+#include <chrono> // for std::chrono::seconds
 
 #include </home/capstone1/dynamic/src/dynamixel-workbench/dynamixel_workbench_toolbox/src/DynamixelWorkbench.h>
 #include </home/capstone1/dynamic/src/dynamixel-workbench/dynamixel_workbench_toolbox/include/dynamixel_workbench_toolbox/dynamixel_driver.h>
@@ -44,6 +45,22 @@ private:
       cout << "Entered: " << ch << endl;
       int32_t goal_position1 = (ch == 'a') ? global_pos1 += 50 : (ch == 'd') ? global_pos1 -= 50 : -1;
       int32_t goal_position2 = (ch == 'a') ? global_pos2 -= 50 : (ch == 'd') ? global_pos2 += 50 : -1;
+      for( auto i : dxlId)
+        {
+          bool re_cur;
+          int32_t get_data = 0;
+          re_cur = dxl_wb.itemRead(i, "Present_Position", &get_data, &log);
+          if (re_cur == false)
+          {
+            printf("%s\n", log);
+            printf("Failed to get Present_Current position\n");
+          }
+          else
+          {
+            printf("Succeed to get Present_Current position(value : %d)\n", get_data);
+          }
+
+        }
 
       if (ch == 's'){
         global_pos1 = 2048;
@@ -54,7 +71,7 @@ private:
         uint8_t ids[2] = { dxlId[0], dxlId[1] };
         
         result = dxl_wb.syncWrite(0, ids, 2, data, 1, &log); // 0은 index 값입니다. 필요에 맞게 설정하
-
+        
 
 
         if (!result)
@@ -161,11 +178,32 @@ public:
       // 로직 구현: 그리퍼를 열거나 닫습니다.
       uint8_t ids[2] = { dxlId[0], dxlId[1] };
       int32_t goal_position[2] = {2048, 2048}; // 초기 위치
+      int32_t get_data =0;
 
       if (request->gripper_moving) {
-          goal_position[0] += 80; // 잡기
-          goal_position[1] -= 80;
-                std::cerr << goal_position[1] << goal_position[0] << std::endl;
+          do{
+            get_data =0;
+            goal_position[0] = 2048 - 220; // 놓기
+            goal_position[1] = 2048 + 220;
+
+            result = dxl_wb.syncWrite(0, ids, 2, goal_position, 1, &log);
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+
+
+
+            goal_position[0] = 2048 + 80; // 잡기
+            goal_position[1] = 2048 - 80;
+            result = dxl_wb.syncWrite(0, ids, 2, goal_position, 1, &log);
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+
+                  std::cerr << goal_position[1] << goal_position[0] << std::endl;
+            dxl_wb.itemRead(dxlId[0], "Present_Current", &get_data, &log);
+        }while(get_data < 5);
+
+
+          // goal_position[0] += 80; // 잡기
+          // goal_position[1] -= 80;
+          //       std::cerr << goal_position[1] << goal_position[0] << std::endl;
 
       } else {
           goal_position[0] -= 220; // 놓기
@@ -173,6 +211,14 @@ public:
       }
       std::cerr << "Gripper operation fuckcessful." << std::endl;
       result = dxl_wb.syncWrite(0, ids, 2, goal_position, 1, &log);
+
+
+      // for(auto i : ids)
+      // {
+      //   int32_t cur_tmp =0;
+      //   dxl_wb.itemRead(i, "Present_Current", &cur_tmp, &log);
+      //   printf("Succeed to get present position(value : %d)\n", cur_tmp);
+      // }
       if (result) {
           response->gripper_flag = true;
           std::cerr << "Gripper operation successful." << std::endl;
@@ -180,6 +226,9 @@ public:
           response->gripper_flag = false;
           std::cerr << "Failed to operate gripper: " << log << std::endl;
       }
+      // response->gripper_flag = true;
+      // std::cerr << "Gripper operation successful." << std::endl;
+
   }
 
   ~GripperNode()
