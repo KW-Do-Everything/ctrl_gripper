@@ -173,42 +173,35 @@ public:
   void handle_set_gripper_pos(const std::shared_ptr<open_manipulator_msgs::srv::Setgripperpos::Request> request, 
                               std::shared_ptr<open_manipulator_msgs::srv::Setgripperpos::Response> response)
   {
-      std::cerr << "Received gripper command: " << (request->gripper_moving ? "Close" : "Open") << std::endl;
+      // std::cerr << "Received gripper command: " << (request->gripper_moving ? "Close" : "Open") << std::endl;
 
       // 로직 구현: 그리퍼를 열거나 닫습니다.
       uint8_t ids[2] = { dxlId[0], dxlId[1] };
       int32_t goal_position[2] = {2048, 2048}; // 초기 위치
       int32_t get_data =0;
 
-      if (request->gripper_moving) {
-          do{
-            get_data =0;
-            goal_position[0] = 2048 - 220; // 놓기
-            goal_position[1] = 2048 + 220;
-
-            result = dxl_wb.syncWrite(0, ids, 2, goal_position, 1, &log);
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-
-
-
-            goal_position[0] = 2048 + 80; // 잡기
-            goal_position[1] = 2048 - 80;
-            result = dxl_wb.syncWrite(0, ids, 2, goal_position, 1, &log);
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-
-                  std::cerr << goal_position[1] << goal_position[0] << std::endl;
-            dxl_wb.itemRead(dxlId[0], "Present_Current", &get_data, &log);
-        }while(get_data < 5);
-
-
-          // goal_position[0] += 80; // 잡기
-          // goal_position[1] -= 80;
-          //       std::cerr << goal_position[1] << goal_position[0] << std::endl;
-
-      } else {
-          goal_position[0] -= 220; // 놓기
-          goal_position[1] += 220;
+      if (request->gripper_moving == "1") {
+          goal_position[0] += 80; // 잡기/ 좁게하기
+          goal_position[1] -= 80;
+      } 
+      else if(request->gripper_moving == "2")
+      {
+          goal_position[0] -= 340; // 놓기 /벌리기
+          goal_position[1] += 340;
+          
       }
+      else if(request->gripper_moving == "3")
+      {
+          goal_position[0] += 120; // 크게 잡기
+          goal_position[1] -= 120;
+      }
+      else if(request->gripper_moving == "4")
+      {
+          goal_position[0] -= 260; // 크게 놓기
+          goal_position[1] += 260;
+      }
+      std::cerr << goal_position[1] << goal_position[0] << std::endl;
+
       std::cerr << "Gripper operation fuckcessful." << std::endl;
       result = dxl_wb.syncWrite(0, ids, 2, goal_position, 1, &log);
 
